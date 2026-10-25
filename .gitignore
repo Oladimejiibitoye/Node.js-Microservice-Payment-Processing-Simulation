@@ -1,0 +1,8 @@
+node_modules/
+.npm-cache/
+dist/
+coverage/
+.env
+*.log
+payments.json
+payments.json.tmp
