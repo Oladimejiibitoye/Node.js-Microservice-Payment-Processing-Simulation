@@ -55,3 +55,13 @@ it('rejects unsafe input before route validation', async () => {
   expect(response.status).toBe(400);
   expect(response.body.error.code).toBe('INVALID_INPUT');
 });
+
+it('returns 413 for oversized JSON bodies', async () => {
+  const application = await app();
+  const response = await request(application)
+    .post('/api/v1/payments')
+    .set('Idempotency-Key', 'large-key')
+    .send({ amount: 100, currency: 'USD', customerId: 'customer_1', description: 'x'.repeat(101 * 1024) });
+  expect(response.status).toBe(413);
+  expect(response.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+});

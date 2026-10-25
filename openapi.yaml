@@ -52,6 +52,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentResponse'
         '400': { $ref: '#/components/responses/ValidationError' }
+        '413': { $ref: '#/components/responses/PayloadTooLargeError' }
         '422': { $ref: '#/components/responses/UnprocessableError' }
         '429': { $ref: '#/components/responses/RateLimitError' }
         '503': { $ref: '#/components/responses/ServiceUnavailableError' }
@@ -212,6 +213,7 @@ components:
             requestId: { type: string }
   responses:
     ValidationError: { description: Invalid request, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    PayloadTooLargeError: { description: Request body is too large, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     NotFoundError: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     ConflictError: { description: State or version conflict, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     UnprocessableError: { description: Idempotency payload mismatch, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

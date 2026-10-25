@@ -63,11 +63,13 @@ process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
 process.on('SIGINT', () => { void shutdown('SIGINT'); });
 
 process.on('unhandledRejection', (reason) => {
+  process.exitCode = 1;
   logger.fatal({ reason }, 'unhandled promise rejection');
   void shutdown('unhandledRejection');
 });
 
 process.on('uncaughtException', (error) => {
+  process.exitCode = 1;
   logger.fatal({ err: error }, 'uncaught exception');
   void shutdown('uncaughtException');
 });

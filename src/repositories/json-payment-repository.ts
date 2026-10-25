@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { Payment, PaymentStatus } from '../domain/payment.js';
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 import { AsyncMutex } from './mutex.js';
 import type { PaymentRepository } from './payment-repository.js';
 
@@ -33,7 +34,8 @@ export class JsonPaymentRepository implements PaymentRepository {
         this.payments = new Map(document.payments.map((payment) => [payment.id, payment]));
         this.initialized = true;
       } catch (error) {
-        throw new ServiceUnavailableError('Payment storage could not be initialized', { cause: error instanceof Error ? error.message : String(error) });
+        logger.error({ err: error, filePath: this.filePath }, 'payment storage initialization failed');
+        throw new ServiceUnavailableError('Payment storage could not be initialized');
       }
     });
   }
@@ -90,9 +92,15 @@ export class JsonPaymentRepository implements PaymentRepository {
   private async mutate<T>(operation: () => Promise<T>): Promise<T> {
     if (!this.initialized) throw new ServiceUnavailableError('Payment storage is not initialized');
     return this.mutex.runExclusive(async () => {
-      const result = await operation();
-      await this.writeToDisk();
-      return result;
+      const before = new Map(this.payments);
+      try {
+        const result = await operation();
+        await this.writeToDisk();
+        return result;
+      } catch (error) {
+        this.payments = before;
+        throw error;
+      }
     });
   }
 
@@ -103,7 +111,8 @@ export class JsonPaymentRepository implements PaymentRepository {
       await writeFile(temporaryPath, JSON.stringify(document, null, 2), 'utf8');
       await rename(temporaryPath, this.filePath);
     } catch (error) {
-      throw new ServiceUnavailableError('Payment storage could not be written', { cause: error instanceof Error ? error.message : String(error) });
+      logger.error({ err: error, filePath: this.filePath }, 'payment storage write failed');
+      throw new ServiceUnavailableError('Payment storage could not be written');
     }
   }
 }
