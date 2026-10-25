@@ -7,7 +7,9 @@ const envSchema = Joi.object({
   PORT: Joi.number().port().default(3000),
   LOG_LEVEL: Joi.string().valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent').default('info'),
   REQUEST_ID_HEADER: Joi.string().pattern(/^[a-z0-9-]+$/i).default('x-request-id'),
-  JSON_BODY_LIMIT: Joi.string().default('100kb')
+  JSON_BODY_LIMIT: Joi.string().default('100kb'),
+  STORAGE_TYPE: Joi.string().valid('memory', 'json').default('memory'),
+  DATA_FILE_PATH: Joi.string().default('./payments.json')
 }).unknown(true);
 
 const { error, value } = envSchema.validate(process.env, {
@@ -25,5 +27,7 @@ export const config = Object.freeze({
   port: value.PORT as number,
   logLevel: value.LOG_LEVEL as string,
   requestIdHeader: value.REQUEST_ID_HEADER as string,
-  jsonBodyLimit: value.JSON_BODY_LIMIT as string
+  jsonBodyLimit: value.JSON_BODY_LIMIT as string,
+  storageType: value.STORAGE_TYPE as 'memory' | 'json',
+  dataFilePath: value.DATA_FILE_PATH as string
 });

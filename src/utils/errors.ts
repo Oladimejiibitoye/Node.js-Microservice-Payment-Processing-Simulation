@@ -21,3 +21,21 @@ export class NotFoundError extends AppError {
     super(404, 'NOT_FOUND', message);
   }
 }
+
+export class ConflictError extends AppError {
+  constructor(message: string, details?: ErrorDetails) {
+    super(409, 'CONFLICT', message, details);
+  }
+}
+
+export class UnprocessableEntityError extends AppError {
+  constructor(message: string, details?: ErrorDetails) {
+    super(422, 'UNPROCESSABLE_ENTITY', message, details);
+  }
+}
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Service temporarily unavailable', details?: ErrorDetails) {
+    super(503, 'SERVICE_UNAVAILABLE', message, details);
+  }
+}
