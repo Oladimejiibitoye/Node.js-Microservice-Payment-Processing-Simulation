@@ -78,9 +78,12 @@ export class PaymentService {
     return this.repository.update(updated, expectedVersion);
   }
 
-  private resolveIdempotency(existing: Payment, input: CreatePaymentInput): { payment: Payment; replayed: boolean } {
+  private async resolveIdempotency(existing: Payment, input: CreatePaymentInput): Promise<{ payment: Payment; replayed: boolean }> {
     if (!samePaymentInput(existing, input)) {
       throw new UnprocessableEntityError('Idempotency key was already used with a different payload');
+    }
+    if (this.enqueuePayment && (existing.status === 'PENDING' || existing.status === 'PROCESSING')) {
+      await this.enqueuePayment(existing);
     }
     return { payment: existing, replayed: true };
   }
