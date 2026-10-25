@@ -22,6 +22,10 @@ const envSchema = Joi.object({
   RETRY_BASE_DELAY_MS: Joi.number().integer().min(0).max(120_000).default(100),
   RETRY_MAX_DELAY_MS: Joi.number().integer().min(0).max(600_000).default(5_000),
   SHUTDOWN_TIMEOUT_MS: Joi.number().integer().min(1_000).max(300_000).default(30_000)
+  ,CORS_ORIGINS: Joi.string().default('')
+  ,RATE_LIMIT_WINDOW_MS: Joi.number().integer().min(1_000).max(86_400_000).default(60_000)
+  ,RATE_LIMIT_MAX: Joi.number().integer().min(1).max(100_000).default(100)
+  ,TRUST_PROXY: Joi.boolean().default(false)
 }).unknown(true);
 
 const { error, value } = envSchema.validate(process.env, {
@@ -54,4 +58,12 @@ export const config = Object.freeze({
   retryBaseDelayMs: value.RETRY_BASE_DELAY_MS as number,
   retryMaxDelayMs: value.RETRY_MAX_DELAY_MS as number,
   shutdownTimeoutMs: value.SHUTDOWN_TIMEOUT_MS as number
+  ,corsOrigins: parseOrigins(value.CORS_ORIGINS as string)
+  ,rateLimitWindowMs: value.RATE_LIMIT_WINDOW_MS as number
+  ,rateLimitMax: value.RATE_LIMIT_MAX as number
+  ,trustProxy: value.TRUST_PROXY as boolean
 });
+
+function parseOrigins(value: string): string[] {
+  return value.split(',').map((origin) => origin.trim()).filter(Boolean);
+}
