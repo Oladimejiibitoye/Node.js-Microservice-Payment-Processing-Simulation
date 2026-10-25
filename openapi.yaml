@@ -1,0 +1,219 @@
+openapi: 3.1.0
+info:
+  title: Payment Processing Simulation API
+  version: 1.0.0
+  description: Asynchronous payment processing simulation with idempotency and optimistic concurrency.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/payments:
+    post:
+      summary: Create a payment
+      description: Persists a PENDING payment and returns before background processing completes.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '202':
+          description: Payment accepted for asynchronous processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '200':
+          description: Existing payment returned for an idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '422': { $ref: '#/components/responses/UnprocessableError' }
+        '429': { $ref: '#/components/responses/RateLimitError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailableError' }
+    get:
+      summary: List payments
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/PaymentStatus'
+      responses:
+        '200':
+          description: Matching payments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [payments]
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payment'
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /api/v1/payments/{id}:
+    get:
+      summary: Retrieve a payment
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Payment resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /api/v1/payments/{id}/status:
+    patch:
+      summary: Update payment status
+      description: Requires a version field or If-Match header to prevent lost updates.
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+        - in: header
+          name: If-Match
+          required: false
+          schema:
+            type: string
+            example: '1'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '200':
+          description: Updated payment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+components:
+  parameters:
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    PaymentId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    PaymentStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED, REFUNDED]
+    CreatePaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [amount, currency, customerId]
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+          maximum: 1000000000
+          description: Amount in minor currency units.
+          example: 1250
+        currency:
+          type: string
+          enum: [AUD, CAD, EUR, GBP, JPY, NGN, USD]
+        description:
+          type: string
+          maxLength: 500
+        customerId:
+          type: string
+          minLength: 1
+          maxLength: 128
+    StatusUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        version:
+          type: integer
+          minimum: 1
+        failureReason:
+          type: string
+          maxLength: 500
+    Payment:
+      type: object
+      required: [id, amount, currency, customerId, status, idempotencyKey, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        amount: { type: integer }
+        currency: { type: string }
+        description: { type: string }
+        customerId: { type: string }
+        status: { $ref: '#/components/schemas/PaymentStatus' }
+        failureReason: { type: string }
+        idempotencyKey: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    PaymentResponse:
+      type: object
+      required: [payment]
+      properties:
+        payment: { $ref: '#/components/schemas/Payment' }
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object }
+            requestId: { type: string }
+  responses:
+    ValidationError: { description: Invalid request, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    NotFoundError: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    ConflictError: { description: State or version conflict, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    UnprocessableError: { description: Idempotency payload mismatch, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    RateLimitError: { description: Too many requests, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    ServiceUnavailableError: { description: Queue or persistence unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

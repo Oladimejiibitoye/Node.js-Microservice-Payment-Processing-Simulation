@@ -1,4 +1,8 @@
 import express from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { load as parseYaml } from 'js-yaml';
 import { config } from './config/env.js';
 import { PaymentController } from './controllers/payment-controller.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -13,6 +17,7 @@ import { apiRateLimiter, corsPolicy, securityHeaders } from './middleware/securi
 export function createApp(paymentService = new PaymentService(createPaymentRepository())): express.Express {
   const app = express();
   const paymentController = new PaymentController(paymentService);
+  const openApiDocument = parseYaml(readFileSync(join(process.cwd(), 'openapi.yaml'), 'utf8')) as object;
 
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
@@ -29,6 +34,8 @@ export function createApp(paymentService = new PaymentService(createPaymentRepos
   app.get('/ready', (_request, response) => {
     response.status(200).json({ status: 'ready' });
   });
+
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
 
   app.use('/api/v1/payments', apiRateLimiter, createPaymentRouter(paymentController));
 
