@@ -173,5 +173,5 @@ export class PaymentWorker {
 
 export function calculateBackoff(attempt: number, baseDelayMs: number, maxDelayMs: number, random: () => number): number {
   const exponential = Math.min(maxDelayMs, baseDelayMs * (2 ** Math.max(0, attempt - 1)));
-  return Math.floor(exponential * (0.5 + random()));
+  return Math.min(maxDelayMs, Math.floor(exponential * (0.5 + random())));
 }

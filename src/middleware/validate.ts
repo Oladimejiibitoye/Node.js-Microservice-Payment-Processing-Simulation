@@ -15,7 +15,7 @@ export function validate(schema: Joi.ObjectSchema, target: ValidationTarget): Re
       }))));
       return;
     }
-    request[target] = value;
+    if (target !== 'query') request[target] = value;
     next();
   };
 }
