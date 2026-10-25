@@ -1,9 +1,13 @@
 import { createServer } from 'node:http';
 import { createApp } from './app.js';
 import { config } from './config/env.js';
+import { createPaymentRepository } from './repositories/repository-factory.js';
+import { PaymentService } from './services/payment-service.js';
 import { logger } from './utils/logger.js';
 
-const app = createApp();
+const repository = createPaymentRepository();
+await repository.initialize();
+const app = createApp(new PaymentService(repository));
 const server = createServer(app);
 
 server.listen(config.port, config.host, () => {

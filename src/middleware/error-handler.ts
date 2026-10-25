@@ -15,7 +15,11 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, next
       : 'An unexpected error occurred';
   const requestId = response.locals.requestId as string | undefined;
 
-  logger.error({ err: error, requestId, method: request.method, path: request.originalUrl, statusCode }, 'request failed');
+  if (isMalformedJson) {
+    logger.warn({ error: error instanceof Error ? error.message : String(error), requestId, method: request.method, path: request.originalUrl, statusCode }, 'request failed: malformed JSON');
+  } else {
+    logger.error({ err: error, requestId, method: request.method, path: request.originalUrl, statusCode }, 'request failed');
+  }
 
   response.status(statusCode).json({
     error: {
