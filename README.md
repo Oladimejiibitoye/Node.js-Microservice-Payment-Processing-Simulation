@@ -198,8 +198,6 @@ The suite covers validation, API success and error paths, both repositories, ide
 - There is no authentication or authorization layer yet.
 - Metrics, tracing, and an admin view for dead-letter payments should be added.
 - Recovery currently scans all recoverable payments at startup rather than using durable job leases.
-- Queue and rate limiter are process-local.
-- JSON persistence is not suitable for multi-instance production deployment.
 - Startup recovery has no distributed job lease, so multiple instances could theoretically process the same payment.
 - No authentication, authorization, metrics, or tracing are implemented.
 - Shutdown draining is bounded at the worker level but should eventually add explicit connection termination for long-lived HTTP clients.
